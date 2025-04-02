@@ -30,9 +30,10 @@ function loadFlightRoutes() {
         .then(data => {
             L.geoJSON(data, {
                 style: {
-                    color: 'yellow',
-                    weight: 3
-                },
+    color: '#cccccc',
+    weight: 3,
+    opacity: 0.7
+}
                 onEachFeature: function (feature, layer) {
                     if (feature.properties && feature.properties.name) {
                         layer.bindTooltip(feature.properties.name, {
