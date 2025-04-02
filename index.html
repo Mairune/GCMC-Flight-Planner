@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Planner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf"></script>
+    <style>
+        #map { height: 600px; }
+        #output { margin-top: 20px; font-weight: bold; }
+        #legDetails { margin-top: 20px; }
+        .input-container { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>GCMC Flight Planner</h1>
+
+    <!-- Inputs for Speed and Departure Time -->
+    <div class="input-container">
+        <label for="speed">Average Speed (km/h): </label>
+        <input type="number" id="speed" value="150" step="1" min="1" />
+        <br />
+        <label for="departureTime">Departure Time (HH:MM): </label>
+        <input type="time" id="departureTime" value="08:00" />
+        <!-- Reset Button -->
+        <button id="resetButton">Reset Waypoints</button>
+        <button id="removeLastButton">Remove Last Waypoint</button>
+    </div>
+
+    <div id="map"></div>
+    <div id="output"></div>
+    <ul id="legDetails"></ul>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
