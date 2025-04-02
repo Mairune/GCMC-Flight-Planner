@@ -23,7 +23,7 @@ function initializeMap() {
 
 // Load permanent flight routes from GeoJSON
 function loadFlightRoutes() {
-    fetch(https://mairune.github.io/gcmc-flight-planner/flight_routes.geojson')
+    fetch('https://mairune.github.io/gcmc-flight-planner/flight_routes.geojson')
         .then(response => response.json())
         .then(data => {
             L.geoJSON(data, {
