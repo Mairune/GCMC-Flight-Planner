@@ -51,8 +51,8 @@ function loadFlightRoutes() {
 // Load fixed permanent markers
 function loadPermanentMarkers() {
     const permanentLocations = [
-        { lat: 57.1261, lng: -131.09674542, name: "Uhtlan" },
-        { lat: 57.0595, lng: -130.6293, name: "Chiyone" }
+        { lat: 57.1261, lng: -131.4539, name: "Uhtlan" },
+        { lat: 57.0595, lng: -130.6293, name: "Ch'iyone" }
     ];
 
     permanentLocations.forEach(location => {
