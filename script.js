@@ -5,12 +5,9 @@ let map, selectedPoints = [], roadLayer, permanentMarkers = [], flightRoutes = [
 function initializeMap() {
     map = L.map('map').setView([57.0858, -131.0810], 11);
 
-    L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoiam9yZHl0b2RkIiwiYSI6ImNtOHY3NndxaTBtc2MyaW9rYmlzcWR4OHAifQ.ucU1OL7L7My1V6NoFVI-uw', {
-        attribution: '&copy; <a href=\"https://www.mapbox.com/about/maps/\">Mapbox</a>',
-        id: 'mapbox/satellite-v9',
-        tileSize: 512,
-        zoomOffset: -1
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
     // Load permanent markers
     loadPermanentMarkers();
