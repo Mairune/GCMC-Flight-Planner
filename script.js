@@ -8,7 +8,7 @@ function initializeMap() {
 
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoiam9yZHl0b2RkIiwiYSI6ImNtOHY3NndxaTBtc2MyaW9rYmlzcWR4OHAifQ.ucU1OL7L7My1V6NoFVI-uw', {
         attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a>',
-        id: 'mapbox/satellite-v9',
+        id: 'mapbox/outdoors-v11',
         tileSize: 512,
         zoomOffset: -1
     }).addTo(map);
@@ -71,6 +71,7 @@ function addPoint(e) {
 
     // Snap to nearest route
     let snappedLatLng = null;
+    let snappedFeature = null;
     if (flightRouteData) {
         const point = turf.point([latlng.lng, latlng.lat]);
         let closestPoint = null;
@@ -84,6 +85,7 @@ function addPoint(e) {
             if (dist < shortestDist) {
                 shortestDist = dist;
                 closestPoint = snapped;
+                snappedFeature = route;
             }
         });
 
@@ -95,26 +97,41 @@ function addPoint(e) {
                 fillColor: 'blue',
                 fillOpacity: 0.8
             }).addTo(map);
-            snappedPoints.push(snapMarker);
+            snappedPoints.push({ latlng: snappedLatLng, feature: snappedFeature });
             console.log("Snapped to:", closestPoint);
         }
     }
 
     // Draw route line if we have two points
-    if (selectedPoints.length === 2 && snappedPoints.length === 2) {
-        let start = selectedPoints[0].latlng;
-        let snappedStart = snappedPoints[0].getLatLng();
-        let snappedEnd = snappedPoints[1].getLatLng();
-        let end = selectedPoints[1].latlng;
+    if (selectedPoints.length >= 2 && snappedPoints.length >= 2) {
+        const start = selectedPoints[selectedPoints.length - 2].latlng;
+        const snappedStart = snappedPoints[snappedPoints.length - 2];
+        const snappedEnd = snappedPoints[snappedPoints.length - 1];
+        const end = selectedPoints[selectedPoints.length - 1].latlng;
 
-        let routeCoords = [
-            [start.lat, start.lng],
-            [snappedStart.lat, snappedStart.lng],
-            [snappedEnd.lat, snappedEnd.lng],
-            [end.lat, end.lng]
-        ];
+        let routeSegments = [];
 
-        let polyline = L.polyline(routeCoords, {
+        // Line from start to snappedStart
+        routeSegments.push([start.lat, start.lng]);
+        routeSegments.push([snappedStart.latlng[0], snappedStart.latlng[1]]);
+
+        // Add flight route segment only if same route
+        if (snappedStart.feature === snappedEnd.feature) {
+            const fullLine = turf.lineString(snappedStart.feature.geometry.coordinates);
+            const pt1 = turf.point([snappedStart.latlng[1], snappedStart.latlng[0]]);
+            const pt2 = turf.point([snappedEnd.latlng[1], snappedEnd.latlng[0]]);
+            const sliced = turf.lineSlice(pt1, pt2, fullLine);
+
+            sliced.geometry.coordinates.forEach(coord => {
+                routeSegments.push([coord[1], coord[0]]);
+            });
+        }
+
+        // Line from snappedEnd to end
+        routeSegments.push([snappedEnd.latlng[0], snappedEnd.latlng[1]]);
+        routeSegments.push([end.lat, end.lng]);
+
+        let polyline = L.polyline(routeSegments, {
             color: 'blue',
             weight: 4,
             opacity: 0.8
@@ -143,7 +160,7 @@ function removeLastWaypoint() {
 
 function resetWaypoints() {
     selectedPoints.forEach(point => map.removeLayer(point.marker));
-    snappedPoints.forEach(snap => map.removeLayer(snap));
+    snappedPoints.forEach(snap => map.removeLayer(snap.marker));
     routeLines.forEach(line => map.removeLayer(line));
     selectedPoints = [];
     snappedPoints = [];
@@ -184,3 +201,4 @@ function calculateDistance() {
 }
 
 initializeMap();
+ 
