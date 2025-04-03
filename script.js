@@ -1,5 +1,5 @@
 // Global Variables
-let map, selectedPoints = [], roadLayer, permanentMarkers = [], flightRoutes = [], snappedPoints = [];
+let map, selectedPoints = [], roadLayer, permanentMarkers = [], flightRoutes = [], snappedPoints = [], routeLines = [];
 let flightRouteData = null; // to store loaded GeoJSON data
 
 // Initialize the Map
@@ -8,7 +8,7 @@ function initializeMap() {
 
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoiam9yZHl0b2RkIiwiYSI6ImNtOHY3NndxaTBtc2MyaW9rYmlzcWR4OHAifQ.ucU1OL7L7My1V6NoFVI-uw', {
         attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a>',
-        id: 'mapbox/outdoors-v11',
+        id: 'mapbox/satellite-v9',
         tileSize: 512,
         zoomOffset: -1
     }).addTo(map);
@@ -22,7 +22,6 @@ function initializeMap() {
     document.getElementById("removeLastButton").addEventListener("click", removeLastWaypoint);
 }
 
-// Load permanent flight routes
 function loadFlightRoutes() {
     fetch('https://mairune.github.io/GCMC-Flight-Planner/flight_routes.geojson')
         .then(response => response.json())
@@ -48,7 +47,6 @@ function loadFlightRoutes() {
         .catch(err => console.error("Failed to load flight routes:", err));
 }
 
-// Load fixed permanent markers
 function loadPermanentMarkers() {
     const permanentLocations = [
         { lat: 57.1261, lng: -131.4539, name: "Uhtlan" },
@@ -62,7 +60,6 @@ function loadPermanentMarkers() {
     });
 }
 
-// Add a waypoint and snap it to the closest route
 function addPoint(e) {
     let latlng = e.latlng;
     let marker = L.marker(latlng).addTo(map)
@@ -73,6 +70,7 @@ function addPoint(e) {
     console.log("Points selected:", selectedPoints);
 
     // Snap to nearest route
+    let snappedLatLng = null;
     if (flightRouteData) {
         const point = turf.point([latlng.lng, latlng.lat]);
         let closestPoint = null;
@@ -90,7 +88,7 @@ function addPoint(e) {
         });
 
         if (closestPoint) {
-            const snappedLatLng = [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]];
+            snappedLatLng = [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]];
             const snapMarker = L.circleMarker(snappedLatLng, {
                 radius: 6,
                 color: 'blue',
@@ -102,12 +100,33 @@ function addPoint(e) {
         }
     }
 
+    // Draw route line if we have two points
+    if (selectedPoints.length === 2 && snappedPoints.length === 2) {
+        let start = selectedPoints[0].latlng;
+        let snappedStart = snappedPoints[0].getLatLng();
+        let snappedEnd = snappedPoints[1].getLatLng();
+        let end = selectedPoints[1].latlng;
+
+        let routeCoords = [
+            [start.lat, start.lng],
+            [snappedStart.lat, snappedStart.lng],
+            [snappedEnd.lat, snappedEnd.lng],
+            [end.lat, end.lng]
+        ];
+
+        let polyline = L.polyline(routeCoords, {
+            color: 'blue',
+            weight: 4,
+            opacity: 0.8
+        }).addTo(map);
+        routeLines.push(polyline);
+    }
+
     if (selectedPoints.length > 1) {
         calculateDistance();
     }
 }
 
-// Remove the most recent waypoint
 function removeLastWaypoint() {
     if (selectedPoints.length > 0) {
         let lastPoint = selectedPoints.pop();
@@ -115,22 +134,25 @@ function removeLastWaypoint() {
         if (snappedPoints.length > 0) {
             map.removeLayer(snappedPoints.pop());
         }
+        if (routeLines.length > 0) {
+            map.removeLayer(routeLines.pop());
+        }
         calculateDistance();
     }
 }
 
-// Clear all user-added waypoints and markers
 function resetWaypoints() {
     selectedPoints.forEach(point => map.removeLayer(point.marker));
     snappedPoints.forEach(snap => map.removeLayer(snap));
+    routeLines.forEach(line => map.removeLayer(line));
     selectedPoints = [];
     snappedPoints = [];
+    routeLines = [];
     document.getElementById("legDetails").innerHTML = "";
     document.getElementById("output").innerText = "Total Distance: 0 km, Total Time: 0 min";
     console.log("Waypoints reset.");
 }
 
-// Calculate straight-line distance between selected points
 function calculateDistance() {
     if (selectedPoints.length < 2) return;
 
