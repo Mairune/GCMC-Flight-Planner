@@ -63,6 +63,8 @@ function loadPermanentMarkers() {
 function addPoint(e) {
     let latlng = e.latlng;
      routeSegments = [];
+    let snappedStart = null;
+    let snappedEnd = null;
     
      let marker = L.marker(latlng).addTo(map)
         .bindTooltip(`${selectedPoints.length + 1}`, { permanent: true, direction: "top" })
@@ -91,6 +93,12 @@ function addPoint(e) {
                 snappedFeature = route;
             }
         });
+
+            snappedEnd = {
+        latlng: [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]],
+        feature: snappedFeature
+    };
+}
 
         if (closestPoint) {
             snappedLatLng = [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]];
