@@ -1,5 +1,5 @@
 // Global Variables
-let map, selectedPoints = [], roadLayer, permanentMarkers = [], flightRoutes = [], snappedPoints = [], routeLines = [];
+let map, selectedPoints = [], roadLayer, permanentMarkers = [], flightRoutes = [], snappedPoints = [], routeLines = [], routeSegments = [];
 let flightRouteData = null; // to store loaded GeoJSON data
 
 // Initialize the Map
@@ -62,7 +62,7 @@ function loadPermanentMarkers() {
 
 function addPoint(e) {
     let latlng = e.latlng;
-     let routeSegments = [];
+     routeSegments = [];
     
      let marker = L.marker(latlng).addTo(map)
         .bindTooltip(`${selectedPoints.length + 1}`, { permanent: true, direction: "top" })
