@@ -115,26 +115,42 @@ function addPoint(e) {
         routeSegments.push([start.lat, start.lng]);
         routeSegments.push([snappedStart.latlng[0], snappedStart.latlng[1]]);
 
-        // Add flight route segment only if same route
+       /* // Add flight route segment only if same route
         if (snappedStart.feature === snappedEnd.feature) {
             const fullLine = turf.lineString(snappedStart.feature.geometry.coordinates.map(coord => [parseFloat(coord[0]), parseFloat(coord[1])]));
             const pt1 = turf.point([parseFloat(snappedStart.latlng[1]), parseFloat(snappedStart.latlng[0])]);
             const pt2 = turf.point([parseFloat(snappedEnd.latlng[1]), parseFloat(snappedEnd.latlng[0])]);
             const sliced = turf.lineSlice(pt1, pt2, fullLine);
-
+*/
             
 console.log("SnappedStart:", snappedStart);
 console.log("SnappedEnd:", snappedEnd);
 
 try {
-    const fullLine = turf.lineString(snappedStart.feature.geometry.coordinates.map(coord => [parseFloat(coord[0]), parseFloat(coord[1])]));
-    const pt1 = turf.point([parseFloat(snappedStart.latlng[1]), parseFloat(snappedStart.latlng[0])]);
-    const pt2 = turf.point([parseFloat(snappedEnd.latlng[1]), parseFloat(snappedEnd.latlng[0])]);
+    const pt1Coords = [
+    parseFloat(snappedStart.latlng?.[1]),
+    parseFloat(snappedStart.latlng?.[0])
+];
+const pt2Coords = [
+    parseFloat(snappedEnd.latlng?.[1]),
+    parseFloat(snappedEnd.latlng?.[0])
+];
 
-    const sliced = turf.lineSlice(pt1, pt2, fullLine);
-    sliced.geometry.coordinates.forEach(coord => {
-        routeSegments.push([coord[1], coord[0]]);
-    });
+if (
+    isNaN(pt1Coords[0]) || isNaN(pt1Coords[1]) ||
+    isNaN(pt2Coords[0]) || isNaN(pt2Coords[1])
+) {
+    console.warn("Invalid coordinates for turf.point:", pt1Coords, pt2Coords);
+    return;
+}
+
+const pt1 = turf.point(pt1Coords);
+const pt2 = turf.point(pt2Coords);
+const fullLine = turf.lineString(snappedStart.feature.geometry.coordinates.map(coord => [parseFloat(coord[0]), parseFloat(coord[1])]));
+const sliced = turf.lineSlice(pt1, pt2, fullLine);
+sliced.geometry.coordinates.forEach(coord => {
+    routeSegments.push([coord[1], coord[0]]);
+});
 } catch (err) {
     console.warn("Failed to slice flight segment:", err);
 }
