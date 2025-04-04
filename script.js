@@ -147,7 +147,8 @@ function addPoint(e) {
 
             const pt1 = turf.point(pt1Coords);
             const pt2 = turf.point(pt2Coords);
-            
+
+console.log("💡 ENTERED slicing section");            
 const rawCoords = snappedStart.feature.geometry.coordinates;
 console.log("Raw snappedStart.feature.geometry.coordinates:", rawCoords);
 
