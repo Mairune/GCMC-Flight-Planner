@@ -140,7 +140,7 @@ try {
 }
 
                 routeSegments.push([coord[1], coord[0]]);
-            });
+            };
         }
 
         // Line from snappedEnd to end
