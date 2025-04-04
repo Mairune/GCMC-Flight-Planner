@@ -8,7 +8,7 @@ function initializeMap() {
 
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoiam9yZHl0b2RkIiwiYSI6ImNtOHY3NndxaTBtc2MyaW9rYmlzcWR4OHAifQ.ucU1OL7L7My1V6NoFVI-uw', {
         attribution: '&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a>',
-        id: 'mapbox/satellite-v9',
+        id: 'mapbox/outdoors-v11',
         tileSize: 512,
         zoomOffset: -1
     }).addTo(map);
@@ -169,7 +169,6 @@ sliced.geometry.coordinates.forEach(coord => {
             opacity: 0.8
         }).addTo(map);
         routeLines.push(polyline);
-    }
 
     if (selectedPoints.length > 1) {
         calculateDistance();
