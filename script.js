@@ -158,7 +158,6 @@ try {
     if (selectedPoints.length > 1) {
         calculateDistance();
     }
-}
 
 function removeLastWaypoint() {
     if (selectedPoints.length > 0) {
