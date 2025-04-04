@@ -69,6 +69,8 @@ function addPoint(e) {
     selectedPoints.push({ latlng, marker });
     console.log("Points selected:", selectedPoints);
 
+    let routeSegments = [];
+
     // Snap to nearest route
     let snappedLatLng = null;
     let snappedFeature = null;
