@@ -159,6 +159,11 @@ const fullLineCoords = rawCoords.map(coord => {
     return [lng, lat];
 }).filter(c => c !== null);
 console.log("Parsed fullLineCoords:", fullLineCoords);
+console.log("Final coords going into turf.lineString:", fullLineCoords);
+if (!fullLineCoords.every(coord => Array.isArray(coord) && coord.length === 2 && !isNaN(coord[0]) && !isNaN(coord[1]))) {
+    console.warn("Invalid coordinate detected, skipping turf.lineString");
+    return;
+}
 const fullLine = turf.lineString(fullLineCoords);
 
             const sliced = turf.lineSlice(pt1, pt2, fullLine);
