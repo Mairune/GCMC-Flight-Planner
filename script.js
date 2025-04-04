@@ -44,7 +44,7 @@ function loadFlightRoutes() {
                 }
             }).addTo(map);
         })
-        .catch(err => console.error("Failed to load flight routes:", err);
+        .catch(err => console.error("Failed to load flight routes:", err));
 }
 
 function loadPermanentMarkers() {
