@@ -62,24 +62,24 @@ function loadPermanentMarkers() {
 
 function addPoint(e) {
     let latlng = e.latlng;
-     routeSegments = [];
+    routeSegments = [];
     let snappedStart = null;
     let snappedEnd = null;
-    
-     let marker = L.marker(latlng).addTo(map)
+
+    let marker = L.marker(latlng).addTo(map)
         .bindTooltip(`${selectedPoints.length + 1}`, { permanent: true, direction: "top" })
         .openTooltip();
 
     selectedPoints.push({ latlng, marker });
     console.log("Points selected:", selectedPoints);
 
-
     // Snap to nearest route
     let snappedLatLng = null;
     let snappedFeature = null;
+    let closestPoint = null;
+
     if (flightRouteData) {
         const point = turf.point([latlng.lng, latlng.lat]);
-        let closestPoint = null;
         let shortestDist = Infinity;
 
         flightRouteData.features.forEach(route => {
@@ -94,12 +94,6 @@ function addPoint(e) {
             }
         });
 
-            snappedEnd = {
-        latlng: [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]],
-        feature: snappedFeature
-    };
-}
-
         if (closestPoint) {
             snappedLatLng = [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]];
             const snapMarker = L.circleMarker(snappedLatLng, {
@@ -109,6 +103,10 @@ function addPoint(e) {
                 fillOpacity: 0.8
             }).addTo(map);
             snappedPoints.push({ latlng: snappedLatLng, feature: snappedFeature });
+            snappedEnd = {
+                latlng: snappedLatLng,
+                feature: snappedFeature
+            };
             console.log("Snapped to:", closestPoint);
         }
     }
@@ -116,58 +114,46 @@ function addPoint(e) {
     // Draw route line if we have two points
     if (selectedPoints.length >= 2 && snappedPoints.length >= 2) {
         const start = selectedPoints[selectedPoints.length - 2].latlng;
-        const snappedStart = snappedPoints[snappedPoints.length - 2];
-        const snappedEnd = snappedPoints[snappedPoints.length - 1];
+        snappedStart = snappedPoints[snappedPoints.length - 2];
+        snappedEnd = snappedPoints[snappedPoints.length - 1];
         const end = selectedPoints[selectedPoints.length - 1].latlng;
 
-        let routeSegments = [];
+        routeSegments = [];
 
         // Line from start to snappedStart
         routeSegments.push([start.lat, start.lng]);
         routeSegments.push([snappedStart.latlng[0], snappedStart.latlng[1]]);
 
-       /* // Add flight route segment only if same route
-        if (snappedStart.feature === snappedEnd.feature) {
+        console.log("SnappedStart:", snappedStart);
+        console.log("SnappedEnd:", snappedEnd);
+
+        try {
+            const pt1Coords = [
+                parseFloat(snappedStart.latlng?.[1]),
+                parseFloat(snappedStart.latlng?.[0])
+            ];
+            const pt2Coords = [
+                parseFloat(snappedEnd.latlng?.[1]),
+                parseFloat(snappedEnd.latlng?.[0])
+            ];
+
+            if (
+                isNaN(pt1Coords[0]) || isNaN(pt1Coords[1]) ||
+                isNaN(pt2Coords[0]) || isNaN(pt2Coords[1])
+            ) {
+                console.warn("Invalid coordinates for turf.point:", pt1Coords, pt2Coords);
+                return;
+            }
+
+            const pt1 = turf.point(pt1Coords);
+            const pt2 = turf.point(pt2Coords);
             const fullLine = turf.lineString(snappedStart.feature.geometry.coordinates.map(coord => [parseFloat(coord[0]), parseFloat(coord[1])]));
-            const pt1 = turf.point([parseFloat(snappedStart.latlng[1]), parseFloat(snappedStart.latlng[0])]);
-            const pt2 = turf.point([parseFloat(snappedEnd.latlng[1]), parseFloat(snappedEnd.latlng[0])]);
             const sliced = turf.lineSlice(pt1, pt2, fullLine);
-*/
-            
-console.log("SnappedStart:", snappedStart);
-console.log("SnappedEnd:", snappedEnd);
-
-try {
-    const pt1Coords = [
-    parseFloat(snappedStart.latlng?.[1]),
-    parseFloat(snappedStart.latlng?.[0])
-];
-const pt2Coords = [
-    parseFloat(snappedEnd.latlng?.[1]),
-    parseFloat(snappedEnd.latlng?.[0])
-];
-
-if (
-    isNaN(pt1Coords[0]) || isNaN(pt1Coords[1]) ||
-    isNaN(pt2Coords[0]) || isNaN(pt2Coords[1])
-) {
-    console.warn("Invalid coordinates for turf.point:", pt1Coords, pt2Coords);
-    return;
-}
-
-const pt1 = turf.point(pt1Coords);
-const pt2 = turf.point(pt2Coords);
-const fullLine = turf.lineString(snappedStart.feature.geometry.coordinates.map(coord => [parseFloat(coord[0]), parseFloat(coord[1])]));
-const sliced = turf.lineSlice(pt1, pt2, fullLine);
-sliced.geometry.coordinates.forEach(coord => {
-    routeSegments.push([coord[1], coord[0]]);
-});
-} catch (err) {
-    console.warn("Failed to slice flight segment:", err);
-}
-
+            sliced.geometry.coordinates.forEach(coord => {
                 routeSegments.push([coord[1], coord[0]]);
-            };
+            });
+        } catch (err) {
+            console.warn("Failed to slice flight segment:", err);
         }
 
         // Line from snappedEnd to end
@@ -181,23 +167,12 @@ sliced.geometry.coordinates.forEach(coord => {
         }).addTo(map);
         routeLines.push(polyline);
 
-    if (selectedPoints.length > 1) {
-        calculateDistance();
-    }
-
-function removeLastWaypoint() {
-    if (selectedPoints.length > 0) {
-        let lastPoint = selectedPoints.pop();
-        map.removeLayer(lastPoint.marker);
-        if (snappedPoints.length > 0) {
-            map.removeLayer(snappedPoints.pop());
+        if (selectedPoints.length > 1) {
+            calculateDistance();
         }
-        if (routeLines.length > 0) {
-            map.removeLayer(routeLines.pop());
-        }
-        calculateDistance();
     }
 }
+
 
 function resetWaypoints() {
     selectedPoints.forEach(point => map.removeLayer(point.marker));
