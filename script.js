@@ -62,14 +62,15 @@ function loadPermanentMarkers() {
 
 function addPoint(e) {
     let latlng = e.latlng;
-    let marker = L.marker(latlng).addTo(map)
+     let routeSegments = [];
+    
+     let marker = L.marker(latlng).addTo(map)
         .bindTooltip(`${selectedPoints.length + 1}`, { permanent: true, direction: "top" })
         .openTooltip();
 
     selectedPoints.push({ latlng, marker });
     console.log("Points selected:", selectedPoints);
 
-    let routeSegments = [];
 
     // Snap to nearest route
     let snappedLatLng = null;
