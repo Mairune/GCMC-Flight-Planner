@@ -175,11 +175,13 @@ function addPoint(e) {
     if (route.geometry.type === "LineString") {
         const line = turf.lineString(route.geometry.coordinates);
         const snapped = turf.nearestPointOnLine(line, point);
-        if (snapped.properties.dist < shortestDist) {
+        const dist = snapped.properties.dist; // in kilometers
+        if (dist < 0.1 && dist < shortestDist) {  // 0.1 km = 100 meters
             closestPoint = snapped;
             snappedFeature = route;
-            shortestDist = snapped.properties.dist;
+            shortestDist = dist;
         }
+
     }
 });
 
