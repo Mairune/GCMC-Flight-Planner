@@ -14,7 +14,84 @@ function initializeMap() {
 
     loadPermanentMarkers();
     loadFlightRoutes();
+    loadRouteGraph();
     map.on('click', addPoint);
+}
+
+// Utility to calculate haversine distance (used in node search)
+function haversineDistance(coord1, coord2) {
+    const from = turf.point(coord1);
+    const to = turf.point(coord2);
+    return turf.distance(from, to, { units: "kilometers" });
+}
+
+// Find nearest graph node to a given [lng, lat]
+function findNearestGraphNode(lngLat, graphNodes) {
+    let closest = null;
+    let minDist = Infinity;
+
+    for (const node of graphNodes) {
+        const dist = haversineDistance(lngLat, node);
+        if (dist < minDist) {
+            minDist = dist;
+            closest = node;
+        }
+    }
+    return closest;
+}
+
+// Build adjacency list from graph data
+function buildGraph(graphData) {
+    const graph = new Map();
+    graphData.edges.forEach(edge => {
+        const fromKey = edge.from.join(',');
+        const toKey = edge.to.join(',');
+        const weight = edge.weight;
+
+        if (!graph.has(fromKey)) graph.set(fromKey, []);
+        if (!graph.has(toKey)) graph.set(toKey, []);
+
+        graph.get(fromKey).push({ node: toKey, weight });
+        graph.get(toKey).push({ node: fromKey, weight }); // assuming bidirectional
+    });
+    return graph;
+}
+
+// Dijkstra's algorithm
+function dijkstra(graph, start, end) {
+    const distances = {};
+    const prev = {};
+    const queue = new Set();
+
+    for (let key of graph.keys()) {
+        distances[key] = Infinity;
+        queue.add(key);
+    }
+    distances[start] = 0;
+
+    while (queue.size > 0) {
+        let current = [...queue].reduce((a, b) => (distances[a] < distances[b] ? a : b));
+        queue.delete(current);
+
+        if (current === end) break;
+
+        for (const neighbor of graph.get(current)) {
+            const alt = distances[current] + neighbor.weight;
+            if (alt < distances[neighbor.node]) {
+                distances[neighbor.node] = alt;
+                prev[neighbor.node] = current;
+            }
+        }
+    }
+
+    // Reconstruct path
+    const path = [];
+    let current = end;
+    while (current) {
+        path.unshift(current);
+        current = prev[current];
+    }
+    return path.map(k => k.split(',').map(Number));
 }
 
 function loadFlightRoutes() {
@@ -28,6 +105,20 @@ function loadFlightRoutes() {
         })
         .catch(err => console.error("Failed to load flight routes:", err));
 }
+
+// load graph
+function loadRouteGraph() {
+    fetch('flight_route_graph.json')
+        .then(res => res.json())
+        .then(data => {
+            routeGraphData = data;
+            graphNodes = data.nodes;
+            routeGraph = buildGraph(data);
+            console.log("✅ Route graph loaded.");
+        })
+        .catch(err => console.error("Failed to load graph data:", err));
+}
+
 
 function loadPermanentMarkers() {
     const locations = [
@@ -69,14 +160,16 @@ function sliceRouteSegment(snappedStart, snappedEnd) {
 }
 
 function addPoint(e) {
-    let latlng = e.latlng;
-    let marker = L.marker(latlng).addTo(map)
+    const latlng = e.latlng;
+    const marker = L.marker(latlng).addTo(map)
         .bindTooltip(`${selectedPoints.length + 1}`, { permanent: true, direction: "top" });
+
     selectedPoints.push({ latlng, marker });
 
-    let snappedLatLng = null, snappedFeature = null;
     const point = turf.point([latlng.lng, latlng.lat]);
-    let closestPoint = null, shortestDist = Infinity;
+    let closestPoint = null;
+    let shortestDist = Infinity;
+    let snappedFeature = null;
 
     flightRouteData?.features.forEach(route => {
         const line = turf.lineString(route.geometry.coordinates);
@@ -89,47 +182,50 @@ function addPoint(e) {
     });
 
     if (closestPoint) {
-        snappedLatLng = [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]];
+        const snappedCoords = closestPoint.geometry.coordinates;
+        const nearestNode = findNearestGraphNode(snappedCoords, graphNodes);
+
+        if (!nearestNode) {
+            console.warn("❌ No nearby graph node found for snapped point");
+            return;
+        }
+
+        const snappedLatLng = [snappedCoords[1], snappedCoords[0]];
+        snappedPoints.push({
+            latlng: snappedLatLng,
+            feature: snappedFeature,
+            graphNode: nearestNode
+        });
+
         L.circleMarker(snappedLatLng, {
             radius: 6, color: 'blue', fillColor: 'blue', fillOpacity: 0.8
         }).addTo(map);
-        snappedPoints.push({ latlng: snappedLatLng, feature: snappedFeature });
-    }
 
-    if (selectedPoints.length >= 2 && snappedPoints.length >= 2) {
-        const start = selectedPoints[selectedPoints.length - 2].latlng;
-        const end = selectedPoints[selectedPoints.length - 1].latlng;
-        const snappedStart = snappedPoints[snappedPoints.length - 2];
-        const snappedEnd = snappedPoints[snappedPoints.length - 1];
-        const routeSegments = [];
+        if (snappedPoints.length >= 2) {
+            const start = snappedPoints[snappedPoints.length - 2];
+            const end = snappedPoints[snappedPoints.length - 1];
 
-        routeSegments.push([start.lat, start.lng]);
-        routeSegments.push([snappedStart.latlng[0], snappedStart.latlng[1]]);
+            const startKey = start.graphNode.join(',');
+            const endKey = end.graphNode.join(',');
 
-        const fullLine = sliceRouteSegment(snappedStart, snappedEnd);
-        if (fullLine) {
-            const pt1 = turf.point([snappedStart.latlng[1], snappedStart.latlng[0]]);
-            const pt2 = turf.point([snappedEnd.latlng[1], snappedEnd.latlng[0]]);
-            const sliced = turf.lineSlice(pt1, pt2, fullLine);
-            sliced.geometry.coordinates.forEach(coord => {
-                if (
-                    Array.isArray(coord) &&
-                    coord.length === 2 &&
-                    !isNaN(coord[0]) &&
-                    !isNaN(coord[1])
-                ) {
-                    routeSegments.push([coord[1], coord[0]]);
-                } else {
-                    console.warn("⚠️ Skipping invalid sliced coordinate:", coord);
-                }
-            });
+            const path = dijkstra(routeGraph, startKey, endKey);
+            if (!path || path.length === 0) {
+                console.warn("⚠️ No path found between nodes");
+                return;
+            }
+
+            const routeSegment = path.map(([lng, lat]) => [lat, lng]);
+
+            const polyline = L.polyline([
+                start.latlng,
+                ...routeSegment,
+                end.latlng
+            ], { color: 'blue', weight: 4, opacity: 0.8 }).addTo(map);
+
+            routeLines.push(polyline);
         }
-
-        routeSegments.push([snappedEnd.latlng[0], snappedEnd.latlng[1]]);
-        routeSegments.push([end.lat, end.lng]);
-
-        const polyline = L.polyline(routeSegments, { color: 'blue', weight: 4, opacity: 0.8 }).addTo(map);
-        routeLines.push(polyline);
+    } else {
+        console.warn("❌ Snapping failed — no route found nearby.");
     }
 }
 
