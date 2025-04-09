@@ -172,6 +172,7 @@ function addPoint(e) {
     let snappedFeature = null;
 
     flightRouteData?.features.forEach(route => {
+    if (route.geometry.type === "LineString") {
         const line = turf.lineString(route.geometry.coordinates);
         const snapped = turf.nearestPointOnLine(line, point);
         if (snapped.properties.dist < shortestDist) {
@@ -179,7 +180,8 @@ function addPoint(e) {
             snappedFeature = route;
             shortestDist = snapped.properties.dist;
         }
-    });
+    }
+});
 
     if (closestPoint) {
         const snappedCoords = closestPoint.geometry.coordinates;
