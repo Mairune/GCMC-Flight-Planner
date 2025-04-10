@@ -1,6 +1,7 @@
 
 let map, selectedPoints = [], permanentMarkers = [], snappedPoints = [], routeLines = [];
 let flightRouteData = null;
+let edgeGeometry = {};
 
 function initializeMap() {
     map = L.map('map').setView([57.0858, -131.0810], 11);
@@ -15,7 +16,15 @@ function initializeMap() {
     loadPermanentMarkers();
     loadFlightRoutes();
     loadRouteGraph();
-    map.on('click', addPoint);
+    // Load edge-to-geometry lookup
+    fetch('edge_geometry_lookup.json')
+      .then(res => res.json())
+      .then(data => {
+        edgeGeometry = data;
+        console.log("✅ Edge geometry loaded");
+      })
+      .catch(err => console.error("❌ Failed to load edge geometry", err));
+        map.on('click', addPoint);
 }
 
 // Utility to calculate haversine distance (used in node search)
@@ -219,7 +228,21 @@ function addPoint(e) {
                 return;
             }
 
-            const routeSegment = path.map(([lng, lat]) => [lat, lng]);
+            let routeSegment = [];
+
+for (let i = 0; i < path.length - 1; i++) {
+    const from = JSON.stringify(path[i]);
+    const to = JSON.stringify(path[i + 1]);
+    const key = `${from}|${to}`;
+
+    if (edgeGeometry[key]) {
+        const segment = edgeGeometry[key];
+        routeSegment.push(...segment.map(([lng, lat]) => [lat, lng])); // Leaflet expects [lat, lng]
+    } else {
+        console.warn("No segment found for:", key);
+    }
+}
+
 
             const polyline = L.polyline([
                 start.latlng,
