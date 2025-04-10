@@ -263,3 +263,4 @@ if (segment) {
 }
 
 document.addEventListener('DOMContentLoaded', initializeMap);
+}
