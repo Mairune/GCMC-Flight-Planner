@@ -181,19 +181,17 @@ function addPoint(e) {
     let snappedFeature = null;
 
     flightRouteData?.features.forEach(route => {
-    if (route.geometry.type === "LineString") {
-        const line = turf.lineString(route.geometry.coordinates);
-        const snapped = turf.nearestPointOnLine(line, point);
-        const dist = snapped.properties.dist; // in kilometers
-        console.log("Snapped distance:", dist.toFixed(4), "km");
-        if (dist < 0.5 && dist < shortestDist) {  // 0.1 km = 100 meters
-            closestPoint = snapped;
-            snappedFeature = route;
-            shortestDist = dist;
+        if (route.geometry.type === "LineString") {
+            const line = turf.lineString(route.geometry.coordinates);
+            const snapped = turf.nearestPointOnLine(line, point);
+            const dist = snapped.properties.dist;
+            if (dist < 0.5 && dist < shortestDist) {
+                closestPoint = snapped;
+                snappedFeature = route;
+                shortestDist = dist;
+            }
         }
-
-    }
-});
+    });
 
     if (closestPoint) {
         const snappedCoords = closestPoint.geometry.coordinates;
@@ -230,24 +228,22 @@ function addPoint(e) {
 
             let routeSegment = [];
 
-for (let i = 0; i < path.length - 1; i++) {
-    const from = JSON.stringify(path[i]);
-    const to = JSON.stringify(path[i + 1]);
-    const key = `${from}|${to}`;
+            for (let i = 0; i < path.length - 1; i++) {
+                const from = JSON.stringify(path[i]);
+                const to = JSON.stringify(path[i + 1]);
+                const key = `${from}|${to}`;
+                const reverseKey = `${to}|${from}`;
 
-    const reverseKey = `${to}|${from}`;
-let segment = edgeGeometry[key] || edgeGeometry[reverseKey];
+                let segment = edgeGeometry[key] || edgeGeometry[reverseKey];
 
-if (segment) {
-    routeSegment.push(...segment.map(([lng, lat]) => [lat, lng]));
-} else {
-    // fallback: draw direct line
-    routeSegment.push([path[i][1], path[i][0]]);
-    routeSegment.push([path[i + 1][1], path[i + 1][0]]);
-    console.warn("No route geometry found — using direct segment:", key);
-}
-
-
+                if (segment) {
+                    routeSegment.push(...segment.map(([lng, lat]) => [lat, lng]));
+                } else {
+                    routeSegment.push([path[i][1], path[i][0]]);
+                    routeSegment.push([path[i + 1][1], path[i + 1][0]]);
+                    console.warn("No route geometry found — using direct segment:", key);
+                }
+            }
 
             const polyline = L.polyline([
                 start.latlng,
@@ -261,6 +257,5 @@ if (segment) {
         console.warn("❌ Snapping failed — no route found nearby.");
     }
 }
-
 document.addEventListener('DOMContentLoaded', initializeMap);
 }
