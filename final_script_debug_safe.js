@@ -258,4 +258,3 @@ function addPoint(e) {
     }
 }
 document.addEventListener('DOMContentLoaded', initializeMap);
-}
