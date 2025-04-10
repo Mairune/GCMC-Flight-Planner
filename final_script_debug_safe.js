@@ -235,13 +235,18 @@ for (let i = 0; i < path.length - 1; i++) {
     const to = JSON.stringify(path[i + 1]);
     const key = `${from}|${to}`;
 
-    if (edgeGeometry[key]) {
-        const segment = edgeGeometry[key];
-        routeSegment.push(...segment.map(([lng, lat]) => [lat, lng])); // Leaflet expects [lat, lng]
-    } else {
-        console.warn("No segment found for:", key);
-    }
+    const reverseKey = `${to}|${from}`;
+let segment = edgeGeometry[key] || edgeGeometry[reverseKey];
+
+if (segment) {
+    routeSegment.push(...segment.map(([lng, lat]) => [lat, lng]));
+} else {
+    // fallback: draw direct line
+    routeSegment.push([path[i][1], path[i][0]]);
+    routeSegment.push([path[i + 1][1], path[i + 1][0]]);
+    console.warn("No route geometry found — using direct segment:", key);
 }
+
 
 
             const polyline = L.polyline([
