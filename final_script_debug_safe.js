@@ -185,7 +185,8 @@ function addPoint(e) {
             const line = turf.lineString(route.geometry.coordinates);
             const snapped = turf.nearestPointOnLine(line, point);
             const dist = snapped.properties.dist;
-            if (dist < 1 && dist < shortestDist) {
+            console.log(`Route snap check: ${dist.toFixed(3)} km`);
+            if (dist < 50 && dist < shortestDist) {
                 closestPoint = snapped;
                 snappedFeature = route;
                 shortestDist = dist;
