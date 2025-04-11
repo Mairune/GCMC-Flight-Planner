@@ -271,8 +271,8 @@ function addPoint(e) {
         }).addTo(map);
     }
 
-} else {
+    } else {
         console.warn("❌ Snapping failed — no route found nearby.");
-}
+    }
 }
 document.addEventListener('DOMContentLoaded', initializeMap);
