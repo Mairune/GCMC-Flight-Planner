@@ -172,7 +172,6 @@ function addPoint(e) {
     const latlng = e.latlng;
     const marker = L.marker(latlng).addTo(map)
         .bindTooltip(`${selectedPoints.length + 1}`, { permanent: true, direction: "top" });
-
     selectedPoints.push({ latlng, marker });
 
     const point = turf.point([latlng.lng, latlng.lat]);
@@ -180,12 +179,13 @@ function addPoint(e) {
     let shortestDist = Infinity;
     let snappedFeature = null;
 
+    // Snap to closest route
     flightRouteData?.features.forEach(route => {
         if (route.geometry.type === "LineString") {
             const line = turf.lineString(route.geometry.coordinates);
             const snapped = turf.nearestPointOnLine(line, point);
             const dist = snapped.properties.dist;
-            if (dist < 0.5 && dist < shortestDist) {
+            if (dist < 1 && dist < shortestDist) {
                 closestPoint = snapped;
                 snappedFeature = route;
                 shortestDist = dist;
@@ -193,66 +193,85 @@ function addPoint(e) {
         }
     });
 
-    if (closestPoint) {
-        const snappedCoords = closestPoint.geometry.coordinates;
-        const nearestNode = findNearestGraphNode(snappedCoords, graphNodes);
+    if (!closestPoint) {
+        console.warn("❌ Snapping failed — no route found nearby.");
+        return;
+    }
 
-        if (!nearestNode) {
-            console.warn("❌ No nearby graph node found for snapped point");
+    const snappedLatLng = [closestPoint.geometry.coordinates[1], closestPoint.geometry.coordinates[0]];
+    const snappedNode = findNearestGraphNode(closestPoint.geometry.coordinates, graphNodes);
+
+    if (!snappedNode) {
+        console.warn("❌ Could not find nearest graph node.");
+        return;
+    }
+
+    snappedPoints.push({
+        latlng: snappedLatLng,
+        feature: snappedFeature,
+        graphNode: snappedNode
+    });
+
+    // Show the snap circle
+    L.circleMarker(snappedLatLng, {
+        radius: 5,
+        color: 'blue',
+        fillColor: 'blue',
+        fillOpacity: 0.9
+    }).addTo(map);
+
+    // If we have 2 or more snapped points, calculate route from previous to current
+    if (snappedPoints.length >= 2) {
+        const prev = snappedPoints[snappedPoints.length - 2];
+        const curr = snappedPoints[snappedPoints.length - 1];
+
+        const startKey = prev.graphNode.join(',');
+        const endKey = curr.graphNode.join(',');
+        const path = dijkstra(routeGraph, startKey, endKey);
+
+        if (!path || path.length === 0) {
+            console.warn("⚠️ No path found between nodes");
             return;
         }
 
-        const snappedLatLng = [snappedCoords[1], snappedCoords[0]];
-        snappedPoints.push({
-            latlng: snappedLatLng,
-            feature: snappedFeature,
-            graphNode: nearestNode
-        });
+        let routeSegment = [];
 
-        L.circleMarker(snappedLatLng, {
-            radius: 6, color: 'blue', fillColor: 'blue', fillOpacity: 0.8
+        for (let i = 0; i < path.length - 1; i++) {
+            const from = JSON.stringify(path[i]);
+            const to = JSON.stringify(path[i + 1]);
+            const key = `${from}|${to}`;
+            const reverseKey = `${to}|${from}`;
+
+            let segment = edgeGeometry[key] || edgeGeometry[reverseKey];
+
+            if (segment) {
+                routeSegment.push(...segment.map(([lng, lat]) => [lat, lng]));
+            } else {
+                routeSegment.push([path[i][1], path[i][0]]);
+                routeSegment.push([path[i + 1][1], path[i + 1][0]]);
+                console.warn("Fallback segment used:", key);
+            }
+        }
+
+        // DRAWING
+
+        // 1. From user click to snapped route
+        L.polyline([prev.latlng, prev.latlng !== prev.graphNode ? prev.latlng : snappedLatLng], {
+            color: 'blue', weight: 3, opacity: 0.8
         }).addTo(map);
 
-        if (snappedPoints.length >= 2) {
-            const start = snappedPoints[snappedPoints.length - 2];
-            const end = snappedPoints[snappedPoints.length - 1];
+        // 2. Along the network route
+        L.polyline(routeSegment, {
+            color: 'blue', weight: 4, opacity: 1.0
+        }).addTo(map);
 
-            const startKey = start.graphNode.join(',');
-            const endKey = end.graphNode.join(',');
+        // 3. From snapped route to final click
+        L.polyline([snappedLatLng, latlng], {
+            color: 'blue', weight: 3, opacity: 0.8
+        }).addTo(map);
+    }
+}
 
-            const path = dijkstra(routeGraph, startKey, endKey);
-            if (!path || path.length === 0) {
-                console.warn("⚠️ No path found between nodes");
-                return;
-            }
-
-            let routeSegment = [];
-
-            for (let i = 0; i < path.length - 1; i++) {
-                const from = JSON.stringify(path[i]);
-                const to = JSON.stringify(path[i + 1]);
-                const key = `${from}|${to}`;
-                const reverseKey = `${to}|${from}`;
-
-                let segment = edgeGeometry[key] || edgeGeometry[reverseKey];
-
-                if (segment) {
-                    routeSegment.push(...segment.map(([lng, lat]) => [lat, lng]));
-                } else {
-                    routeSegment.push([path[i][1], path[i][0]]);
-                    routeSegment.push([path[i + 1][1], path[i + 1][0]]);
-                    console.warn("No route geometry found — using direct segment:", key);
-                }
-            }
-
-            const polyline = L.polyline([
-                start.latlng,
-                ...routeSegment,
-                end.latlng
-            ], { color: 'blue', weight: 4, opacity: 0.8 }).addTo(map);
-
-            routeLines.push(polyline);
-        }
     } else {
         console.warn("❌ Snapping failed — no route found nearby.");
     }
