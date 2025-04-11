@@ -269,10 +269,7 @@ function addPoint(e) {
         L.polyline([snappedLatLng, latlng], {
             color: 'blue', weight: 3, opacity: 0.8
         }).addTo(map);
-    }
 
-    } else {
-        console.warn("❌ Snapping failed — no route found nearby.");
     }
 }
 document.addEventListener('DOMContentLoaded', initializeMap);
